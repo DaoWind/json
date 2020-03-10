@@ -682,6 +682,7 @@ func (d *decodeState) object(v reflect.Value) error {
 	}
 
 	var fields structFields
+	var fBitMap []bool
 
 	// Check type of target:
 	//   struct or
@@ -707,6 +708,7 @@ func (d *decodeState) object(v reflect.Value) error {
 		}
 	case reflect.Struct:
 		fields = cachedTypeFields(t)
+		fBitMap = make([]bool, len(fields.list))
 		// ok
 	default:
 		d.saveError(&UnmarshalTypeError{Value: "object", Type: t, Offset: int64(d.off)})
@@ -717,7 +719,6 @@ func (d *decodeState) object(v reflect.Value) error {
 	var mapElem reflect.Value
 	origErrorContext := d.errorContext
 
-	fCnt := 0
 	for {
 		// Read opening " of string key or closing }.
 		d.scanWhile(scanSkipSpace)
@@ -753,11 +754,10 @@ func (d *decodeState) object(v reflect.Value) error {
 			subv = mapElem
 		} else {
 			// var f *field
-			idx := 0
 			if i, ok := fields.nameIndex[string(key)]; ok {
 				// Found an exact name match.
 				f = &fields.list[i]
-				idx = i
+				fBitMap[i] = true
 			} else {
 				// Fall back to the expensive case-insensitive
 				// linear search.
@@ -765,20 +765,11 @@ func (d *decodeState) object(v reflect.Value) error {
 					ff := &fields.list[i]
 					if ff.equalFold(ff.nameBytes, key) {
 						f = ff
-						idx = i
+						fBitMap[i] = true
 						break
 					}
 				}
 			}
-			for fCnt < idx {
-				fm := &fields.list[fCnt]
-				if fm.must {
-					errMsg := fmt.Sprintf("Field(%s) Must Be Exist!", fm.name)
-					panic(errMsg)
-				}
-				fCnt++
-			}
-			fCnt++
 			if f != nil {
 				subv = v
 				destring = f.quoted
@@ -896,13 +887,13 @@ func (d *decodeState) object(v reflect.Value) error {
 			panic(phasePanicMsg)
 		}
 	}
-	for fCnt < len(fields.list) {
-		fm := &fields.list[fCnt]
-		if fm.must {
-			errMsg := fmt.Sprintf("Field(%s) Must Be Exist!", fm.name)
-			panic(errMsg)
+	for i, flag := range fBitMap {
+		if !flag {
+			fm := &fields.list[i]
+			if fm.must {
+				return fmt.Errorf("Field(%s) Must Be Exist!", fm.name)
+			}
 		}
-		fCnt++
 	}
 	return nil
 }
@@ -975,6 +966,9 @@ func (d *decodeState) literalStore(item []byte, v reflect.Value, fromQuoted bool
 			d.saveError(fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into %v", item, v.Type()))
 			break
 		}
+		if f != nil && f.must {
+			return fmt.Errorf("Field(%s) Must Be Not-Null!", f.name)
+		}
 		switch v.Kind() {
 		case reflect.Interface, reflect.Ptr, reflect.Map, reflect.Slice:
 			v.Set(reflect.Zero(v.Type()))
@@ -1014,7 +1008,7 @@ func (d *decodeState) literalStore(item []byte, v reflect.Value, fromQuoted bool
 			panic(phasePanicMsg)
 		}
 		if f != nil && f.must && len(s) == 0 {
-			return fmt.Errorf("Field(%s) Must Be Exist!", f.name)
+			return fmt.Errorf("Field(%s) Must Be Not-Empty!", f.name)
 		}
 		switch v.Kind() {
 		default:
