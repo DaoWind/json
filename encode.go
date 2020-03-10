@@ -650,12 +650,12 @@ FieldLoop:
 			fv = fv.Field(i)
 		}
 
-		// Add by DaoWind - Start
+		/* NOTE: DaoWind (from JSON-Structure to JSON-Bytes)
 		if f.must && isEmptyValue(fv) {
 			errMsg := fmt.Sprintf("Field(%s) Must Be Exist!", f.name)
 			panic(errMsg)
 		}
-		// Add by DaoWind - End
+		*/
 		if f.omitEmpty && isEmptyValue(fv) {
 			continue
 		}
@@ -1050,7 +1050,7 @@ type field struct {
 	index     []int
 	typ       reflect.Type
 	omitEmpty bool
-	must      bool // Add by DaoWind
+	must      bool
 	quoted    bool
 
 	encoder encoderFunc
@@ -1167,7 +1167,7 @@ func typeFields(t reflect.Type) structFields {
 						index:     index,
 						typ:       ft,
 						omitEmpty: opts.Contains("omitempty"),
-						must: opts.Contains("must"), // Add by DaoWind - Start
+						must: opts.Contains("must"),
 						quoted:    quoted,
 					}
 					field.nameBytes = []byte(field.name)
