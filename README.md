@@ -1,11 +1,16 @@
 # json
-The json package is based on go1.13.8 encoding/json package, add one new function “json tag: must”
-Sample Code:
+        The json package was based on go1.13.8 encoding/json package
+        New feature: 
+                "must" tag
+        Description: 
+                if json bytes missing field or the field with empty value,  Unmarshal will failed.
+            
+## Sample Code:
 -----------------------------------------------------------------------------------------------------------------------
 package main
 
 import (
-        "github.com/DaoWind/json"
+        "github.com/DaoWind/json"    
         "fmt"
 )
 
@@ -33,3 +38,4 @@ func main() {
                 fmt.Printf("Success!\n")
         }
 }
+
